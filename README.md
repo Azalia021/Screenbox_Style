@@ -19,11 +19,11 @@
 
 ### 主要特性
 
-- **原汁原味的 Screenbox 视觉**：采用全宽顶栏与底栏布局、平滑无色阶断层的线性渐变遮罩，以及深色不透明弹出菜单。
+- **原汁原味的 Screenbox 视觉**：采用全宽顶栏与底栏布局、平滑无色阶断层的线性渐变遮罩。
 - **同步平滑交互**：顶栏显示当前播放文件名（在无边框或全屏模式下自动呈现窗口三键），顶栏与底栏同步淡入淡出。
 - **完整的底栏控制**：集成播放/暂停、上一个/下一个、进度条与时间显示、静音按钮与音量滑块（拖动时实时显示百分比气泡提示）。
 - **实用功能入口**：内置文件夹播放列表（Folder Playlist）、独立的字幕/音频轨切换按钮、窗口置顶（Pin Window）、全屏切换，以及一键呼出 mpv 右键菜单（Context Menu）。
-- **开箱即用**：内置 Inter UI 字体与多语言支持，默认优化了 OSD 位置与显示，减少与顶栏标题的重叠干扰。
+- **开箱即用**：内置 Inter UI 字体，默认优化了 OSD 位置与显示，减少与顶栏标题的重叠干扰。
 
 ### 快速安装
 
@@ -102,11 +102,11 @@ Screenbox_Style/
 
 ### Features
 
-- **Authentic Screenbox Aesthetics**: Full-width top and bottom bars, smooth banding-free linear gradient scrims, and dark opaque popup menus.
+- **Authentic Screenbox Aesthetics**: Full-width top and bottom bars and smooth banding-free linear gradient scrims.
 - **Synchronized Fade Transitions**: Displays the current filename in the top bar (with window caption buttons in borderless or fullscreen mode), fading top and bottom bars in and out together.
 - **Complete Bottom Controls**: Play/Pause, Previous/Next, seekbar with time display, mute button, and volume slider with a live percentage tooltip while dragging.
 - **Built-in Utilities**: Folder Playlist, dedicated Subtitle and Audio track buttons, Pin Window (always-on-top), Fullscreen toggle, and one-click access to the native mpv Context Menu.
-- **Ready Out of the Box**: Bundles Inter UI fonts and multi-language localization, with sensible OSD defaults to prevent overlapping the top bar title.
+- **Ready Out of the Box**: Bundles Inter UI fonts, with sensible OSD defaults to prevent overlapping the top bar title.
 
 ### Installation
 
