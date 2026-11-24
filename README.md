@@ -8,7 +8,7 @@
 
 ## 中文说明
 
-**Screenbox_Style** 是一套为原版 [mpv](https://mpv.io/) 打造的现代 Fluent 风格 OSC（On-Screen Controller）主题，以 Windows 现代媒体播放器 [Screenbox](https://github.com/stinus-dev/Screenbox) 的视觉设计与 UI 布局为蓝本，兼具轻量、流畅与开箱即用的体验。
+**Screenbox_Style** 是一套为原版 [mpv](https://mpv.io/) 打造的现代 Fluent 风格 OSC（On-Screen Controller）主题，以 Windows 现代媒体播放器 [Screenbox](https://github.com/huynhsontung/Screenbox) 的视觉设计与 UI 布局为蓝本，兼具轻量、流畅与开箱即用的体验。
 
 > **免责声明**：本项目是受 Screenbox 视觉风格启发的第三方非官方 mpv 主题，与 Screenbox 官方团队无隶属关系。
 
@@ -91,7 +91,7 @@ Screenbox_Style/
 
 ## English
 
-**Screenbox_Style** is a modern Fluent-style OSC (On-Screen Controller) theme for vanilla [mpv](https://mpv.io/), modeled after the visual design and UI layout of the modern Windows media player [Screenbox](https://github.com/stinus-dev/Screenbox). It is designed to be cohesive, lightweight, smooth, and ready to use out of the box.
+**Screenbox_Style** is a modern Fluent-style OSC (On-Screen Controller) theme for vanilla [mpv](https://mpv.io/), modeled after the visual design and UI layout of the modern Windows media player [Screenbox](https://github.com/huynhsontung/Screenbox). It is designed to be cohesive, lightweight, smooth, and ready to use out of the box.
 
 > **Disclaimer**: This is an unofficial third-party mpv theme inspired by Screenbox's design language and is not affiliated with the Screenbox project.
 
