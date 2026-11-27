@@ -17,8 +17,8 @@
 
 - **项目名称**：Screenbox_Style
 - **文档版本**：1.0
-- **更新日期**：2026-11-23
-- **当前状态**：v1.0 多日实测无异常，准备正式发布（详见 [REQUIREMENTS_ISSUES_PROGRESS.md](./REQUIREMENTS_ISSUES_PROGRESS.md)）
+- **更新日期**：2026-11-26
+- **当前状态**：v1.0 已正式发布并持续维护（详见 [REQUIREMENTS_ISSUES_PROGRESS.md](./REQUIREMENTS_ISSUES_PROGRESS.md)）
 
 ### 项目目标
 
@@ -56,7 +56,7 @@ Screenbox_Style/
   - 提供完整的基础播放控制、时间显示、静音与带实时百分比提示的音量滑块、底栏 Folder Playlist、独立的字幕/音频轨按钮、窗口置顶（Pin Window）、全屏按钮与 mpv 右键菜单（Context Menu）触发按钮。
 - **v2.0（后续规划探索）**：
   - 评估播放列表按钮移至顶栏左侧的可行性；
-  - 调研章节显示与切换、随机播放/循环播放按钮、音频与字幕菜单合并，以及画中画（PiP）体验深化。
+  - 调研章节显示与切换、随机播放/循环播放按钮（及播完自动连播下一个媒体策略）、音频与字幕菜单合并，以及画中画（PiP）体验深化。
 
 ### 需求、问题与进度管理
 
@@ -77,8 +77,8 @@ Screenbox_Style/
 
 - **Project Name**: Screenbox_Style
 - **Document Version**: 1.0
-- **Last Updated**: 2026-11-23
-- **Status**: v1.0 multi-day stability testing passed with no issues; ready for release (see [REQUIREMENTS_ISSUES_PROGRESS.md](./REQUIREMENTS_ISSUES_PROGRESS.md))
+- **Last Updated**: 2026-11-26
+- **Status**: v1.0 officially released and actively maintained (see [REQUIREMENTS_ISSUES_PROGRESS.md](./REQUIREMENTS_ISSUES_PROGRESS.md))
 
 ### Project Goal
 
@@ -116,7 +116,7 @@ Screenbox_Style/
   - Delivers core playback controls, time display, mute & volume slider with live drag percentage tooltip, Folder Playlist in the bottom bar, dedicated Subtitle and Audio track buttons, Pin Window, Fullscreen toggle, and mpv Context Menu trigger.
 - **v2.0 (Planned Exploration)**:
   - Evaluate moving the playlist queue button to the top-left bar;
-  - Investigate chapter display/switching, shuffle/loop controls, merging audio & subtitle menus, and enhanced Picture-in-Picture (PiP) behavior.
+  - Investigate chapter display/switching, shuffle/loop controls (along with auto-advancing to the next media at EOF), merging audio & subtitle menus, and enhanced Picture-in-Picture (PiP) behavior.
 
 ### Requirements, Issues & Progress Management
 

@@ -105,6 +105,8 @@ local user_opts = {
     volume_control_type = "linear",        -- volume scale type: "linear" or "logarithmic"
     volumebar_unmute_on_click = false,     -- unmute audio when adjusting volume slider with left click
     playlist_button = true,                -- show folder playlist button in bottom bar (REQ-TOP-02)
+    autoload_playlist = true,              -- auto-populate same-folder media into playlist when opening a single file so Prev/Next always work
+    pause_on_eof = true,                   -- always pause at end of media (with replay button) instead of auto-advancing to next playlist item (v1.0)
     hide_empty_playlist_button = false,    -- hide playlist button when no playlist exists
     gray_empty_playlist_button = false,    -- gray out the playlist button when no playlist exists
 
@@ -791,6 +793,7 @@ local state = {
     chapter = -1,                           -- current chapter index
     visibility_modes = {},                  -- visibility_modes to cycle through
     eof_reached = false,
+    eof_paused = false,                     -- tracks whether playback paused due to reaching EOF
     ontop = false,
     speed = 1,
     file_loop = false,
@@ -2310,7 +2313,7 @@ end
 
 local menu = nil          -- the open menu: {kind, title, items, anchor, scroll, hover, pressed, back, t0, geo}
 local menu_frame = 0      -- bumped once per render, so a menu's geometry is worked out once per frame
-local close_menu, open_menu, render_menu, menu_event, menu_covers_sync, menu_cover_ready
+local close_menu, open_menu, render_menu, menu_event, menu_covers_sync, menu_cover_ready, populate_folder_playlist, step_playlist
 do -- (in a block: the main chunk is close to Lua's limit of 200 locals)
 
 local MENU = {row_h = 32, sep_h = 9, header_h = 32, pad = 6, radius = 8, fs = 14, meta_fs = 12.5, title_fs = 12.5, glyph = 16, icon = 18}
@@ -2455,6 +2458,17 @@ local function list_folders(dir)
     return natural_sort(out)
 end
 
+local AUTOLOAD_MAX_ENTRIES = 5000
+
+local function enqueue_folder_neighbors(dir, files, index)
+    for i = 1, index - 1 do
+        mp.commandv("loadfile", utils.join_path(dir, files[i]), "insert-at", tostring(i - 1))
+    end
+    for i = index + 1, #files do
+        mp.commandv("loadfile", utils.join_path(dir, files[i]), "append")
+    end
+end
+
 -- make the folder the playlist, in order, and play one of its files (the playing
 -- file keeps playing when it is the one picked)
 local function play_folder(dir, files, index)
@@ -2462,14 +2476,75 @@ local function play_folder(dir, files, index)
     local path = current_file()
     if path and same_path(path, target) then
         mp.commandv("playlist-clear")
+        if state.eof_reached then
+            mp.commandv("seek", 0, "absolute-percent")
+        end
+        mp.commandv("set", "pause", "no")
     else
         mp.commandv("loadfile", target, "replace")
+        mp.commandv("set", "pause", "no")
     end
-    for i = 1, index - 1 do
-        mp.commandv("loadfile", utils.join_path(dir, files[i]), "insert-at", tostring(i - 1))
+    enqueue_folder_neighbors(dir, files, index)
+end
+
+-- populate same-folder sibling media into mpv's playlist when opening a single local file
+-- so Previous/Next buttons, keyboard track skip, and playlist counters work from the start
+populate_folder_playlist = function()
+    if not user_opts.autoload_playlist then return end
+    if mp.get_property_number("playlist-count", 0) ~= 1 then return end
+    local path, dir = current_file()
+    if not path or not dir then return end
+    local files = list_media(dir, media_kind())
+    if #files <= 1 or #files > AUTOLOAD_MAX_ENTRIES then return end
+    local index
+    for i, f in ipairs(files) do
+        if same_path(path, utils.join_path(dir, f)) then
+            index = i
+            break
+        end
     end
-    for i = index + 1, #files do
-        mp.commandv("loadfile", utils.join_path(dir, files[i]), "append")
+    if not index then return end
+    enqueue_folder_neighbors(dir, files, index)
+end
+
+-- step to previous (delta = -1) or next (delta = 1) media in playlist or current folder,
+-- ensuring the target media starts playing even if the previous media paused at EOF
+step_playlist = function(delta)
+    local pl_count = mp.get_property_number("playlist-count", 0)
+    local loop = mp.get_property("loop-playlist", "no") ~= "no"
+    if pl_count > 1 then
+        local pl_pos = mp.get_property_number("playlist-pos-1", 0)
+        if pl_pos < 1 then
+            mp.commandv("playlist-play-index", tostring(delta < 0 and (pl_count - 1) or 0))
+            mp.commandv("set", "pause", "no")
+        elseif loop or (delta < 0 and pl_pos > 1) or (delta > 0 and pl_pos < pl_count) then
+            mp.commandv(delta < 0 and "playlist-prev" or "playlist-next")
+            mp.commandv("set", "pause", "no")
+        end
+        return
+    end
+    local path, dir = current_file()
+    if not path or not dir then return end
+    local files = list_media(dir, media_kind())
+    if #files <= 1 then return end
+    local index
+    for i, f in ipairs(files) do
+        if same_path(path, utils.join_path(dir, f)) then
+            index = i
+            break
+        end
+    end
+    if not index then return end
+    local target = index + delta
+    if loop then
+        target = ((target - 1) % #files) + 1
+    end
+    if target < 1 or target > #files then return end
+    if #files <= AUTOLOAD_MAX_ENTRIES then
+        play_folder(dir, files, target)
+    else
+        mp.commandv("loadfile", utils.join_path(dir, files[target]), "replace")
+        mp.commandv("set", "pause", "no")
     end
 end
 
@@ -2574,7 +2649,10 @@ local function menu_items(kind, arg)
             local meta = tostring(i)
             if with_covers and file then meta = active and locale.playing or nil end
             items[#items + 1] = {label = name, active = active, cover = with_covers and file or nil, meta = meta,
-                action = function() mp.commandv("playlist-play-index", tostring(i - 1)) end}
+                action = function()
+                    mp.commandv("playlist-play-index", tostring(i - 1))
+                    mp.commandv("set", "pause", "no")
+                end}
         end
         if one_dir then title = dir_name(dir) end
         if dir then header = {label = locale.browse_folders, submenu = "browse", arg = dir} end
@@ -3597,9 +3675,14 @@ end
 
 -- run a button's command; mpv's select lists open as ModernZ menus instead
 local function run_command(command, element_name)
-    local kind = user_opts.modern_menus and menu_for_command[command:match("^%s*(.-)%s*$")]
+    local trimmed = command:match("^%s*(.-)%s*$")
+    local kind = user_opts.modern_menus and menu_for_command[trimmed]
     if kind then
         open_menu(kind, element_name)
+    elseif trimmed == "playlist-prev" then
+        step_playlist(-1)
+    elseif trimmed == "playlist-next" then
+        step_playlist(1)
     else
         mp.command(command)
     end
@@ -4836,6 +4919,7 @@ mp.register_event("shutdown", function()
 end)
 mp.register_event("file-loaded", function()
     state.file_loaded = true
+    populate_folder_playlist()
     local oos = user_opts.osc_on_start
     if oos == "bottom" or oos == "both" then show_osc() end
     if oos == "top" or oos == "both" then show_wc() end
@@ -4844,6 +4928,11 @@ mp.register_event("start-file", function()
     -- reset ab loop on new file start
     mp.set_property("ab-loop-a", "no")
     mp.set_property("ab-loop-b", "no")
+    -- if the previous file paused at EOF, unpause so the newly switched file plays immediately
+    if state.eof_paused then
+        state.eof_paused = false
+        mp.set_property_bool("pause", false)
+    end
     request_init()
 end)
 mp.observe_property("track-list", "native", update_tracklist)
@@ -4866,6 +4955,9 @@ mp.register_event("seek", function()
     if state.file_loaded then
         state.file_loaded = false
         return
+    end
+    if not mp.get_property_bool("eof-reached") then
+        state.eof_paused = false
     end
     if user_opts.osc_on_seek and not (state.file_loop and mp.get_property_number("time-pos", -1) == 0) then
         show_osc()
@@ -4900,7 +4992,12 @@ observe_cached("osd-scale-by-window", request_init_resize)
 mp.observe_property("touch-pos", "native", handle_touch)
 observe_cached("volume", request_tick)
 observe_cached("mute", request_tick)
-observe_cached("eof-reached", request_tick)
+observe_cached("eof-reached", function()
+    if state.eof_reached then
+        state.eof_paused = true
+    end
+    request_tick()
+end)
 observe_cached("ontop", request_init)
 observe_cached("speed", request_tick)
 -- the layout reserves a chapter title row only while inside a chapter, so rebuild it
@@ -5078,6 +5175,9 @@ end
 
 mp.observe_property("pause", "bool", function(_, enabled)
     state.pause = (enabled == true)
+    if not state.pause then
+        state.eof_paused = false
+    end
     request_tick()
     if user_opts.showonpause and user_opts.visibility ~= "never" then
         state.enabled = enabled
@@ -5250,6 +5350,27 @@ local function validate_user_opts()
         state.user_static_osd_margin_y = nil
     end
 
+    -- pause at end of every media (showing replay button) instead of closing or auto-advancing to next playlist item (v1.0)
+    if user_opts.pause_on_eof then
+        if state.user_keep_open == nil then
+            state.user_keep_open = mp.get_property("keep-open", "no")
+        end
+        if state.user_keep_open_pause == nil then
+            state.user_keep_open_pause = mp.get_property_bool("keep-open-pause", true)
+        end
+        mp.set_property("keep-open", "always")
+        mp.set_property_bool("keep-open-pause", true)
+    else
+        if state.user_keep_open ~= nil then
+            mp.set_property("keep-open", state.user_keep_open)
+            state.user_keep_open = nil
+        end
+        if state.user_keep_open_pause ~= nil then
+            mp.set_property_bool("keep-open-pause", state.user_keep_open_pause)
+            state.user_keep_open_pause = nil
+        end
+    end
+
     local watch_later = "," .. ((mp.get_property("options/watch-later-options") or ""):gsub("%s+", "")) .. ","
     if user_opts.sub_margins and watch_later:find(",sub-pos,", 1, true) then
         msg.warn("sub_margins conflict: add watch-later-options-remove=sub-pos to mpv.conf")
@@ -5263,6 +5384,7 @@ end
 opt.read_options(user_opts, "modernz", function(changed)
     if changed.language then load_locale_file() end
     validate_user_opts()
+    if changed.autoload_playlist and user_opts.autoload_playlist then populate_folder_playlist() end
     if changed.keep_with_cursor then apply_cursor_hide_flag(false) end
     if changed.language then set_osc_locale() end
     set_icon_theme()

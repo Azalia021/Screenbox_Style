@@ -14,8 +14,8 @@
 ## 中文正文
 
 - 文档版本：1.0
-- 更新日期：2026-11-23
-- 当前状态：第一版（v1.0）核心开发与细节调优已完成，进入多日稳定性测试阶段（测试无误后正式定版）
+- 更新日期：2026-11-26
+- 当前状态：v1.0 已发布，持续修复实测反馈问题（详见 `ISS-12` / `PRG-14`）
 
 ---
 
@@ -74,6 +74,7 @@
 | `ISS-09` | `REQ-OTH-03` | P1 | 顶栏与底栏半透明渐变遮罩在亮色/纯色视频画面（如蓝天）上出现明显的横向色阶断层（banding）。 | 已修复 | 原 `add_gradient_mask` 使用 24 个 `\blur0` 离散水平矩形条拼接渐变，每条高 3–5px 且透明度跳跃，导致横向条纹断层；已重构为单个带 ASS 高斯模糊（`\blur` + `\bord0`）的离屏扩展矩形（顶栏 `edge_depth=24, blur=60, opacity=0.72`；底栏 `edge_depth=52, blur=72, opacity=0.63`），由 libass 在输出分辨率逐像素平滑插值，同时将遮罩元素数从 48 个降至 2 个。 |
 | `ISS-10` | `REQ-OTH-01` | P1 | 右上角关闭按钮悬停时右上角出现黑色圆角缺口，且曲率与 Windows 11 原生窗口圆角不一致。 | 已修复 | 关闭按钮本身已是直角（`hover_radius = 0`），该黑色圆角来自 `render_window_corners` 在所有控件之上绘制的软件黑色圆角遮罩（`window_corner_radius=10` 随 `playres` 缩放，与系统 DWM 圆角不重合）。已将 `window_rounded_corners` 默认改为 `false`/`no`（交由系统原生圆角裁切），并在 `render_window_corners` 中跳过顶栏关闭按钮可见时的右上角遮罩绘制。 |
 | `ISS-11` | `REQ-OTH-01` / `REQ-BOT-03` | P1 | 启用 `sub_margins=yes` 与 `osd_margins=yes` 后，字幕偶尔在底栏淡出后仍高于底栏，且调节音量时左上角音量百分比偶尔未被下移、与顶栏标题重叠。 | 已解决 | 1) 先在 `modernz.lua` 中修复了 `sub-pos` 异步回显竞态（`pending_subpos_writes` 队列 + `sid` 守卫外移）及 `osd_margins` 淡入延迟/`osd_units_y` 计算；2) 出于保守与稳定性考量，最终在 `modernz.lua` 与 `modernz.conf` 中默认关闭动态避让（`sub_margins=no`、`osd_margins=no`），字幕不再被底栏顶高，同时新增静态配置 `osd_margin_y=60`，将左上角音量百分比等 OSD 文字永久固定在顶栏下方，彻底消除动态跳动与遮挡风险。 |
+| `ISS-12` | `REQ-BOT-01` / `REQ-TOP-02` | P1 | 未通过播放列表菜单切换过视频时，底栏“上一个 / 下一个”按钮点击无响应（播完暂停并显示圆圈重播图标）；通过播放列表切换视频后，“上一个 / 下一个”恢复可用，但播完会自动跳转到下一个媒体而非暂停。 | 已修复 | 1) 根因：单文件打开时 mpv 内部 `playlist` 仅有 1 项，原 Folder Playlist 仅在点击菜单项时才调用 `play_folder` 填充目录列表，导致此前 `playlist-prev`/`playlist-next` 无条目可切；同时 `keep-open=yes` 仅在列表末尾暂停，填充多条目后即自动连播下一曲。2) 修复：新增 `autoload_playlist=yes`（单文件载入时自动将同目录同类型媒体按自然排序填入 `playlist`）并为 `playlist-prev`/`playlist-next` 增加 `step_playlist` 目录兜底；新增 `pause_on_eof=yes`（默认设 `keep-open=always` 与 `keep-open-pause=yes`）确保播完固定暂停并显示重播按钮，同时在上下曲、播放列表点选及末尾切歌时自动解除暂停起播（自动播放下一曲留待 v2.0 随 `REQ-BOT-04` 随机/循环按钮一并完善）。 |
 
 ---
 
@@ -94,6 +95,7 @@
 | `PRG-11` | 2026-11-23 | 清理 `modernz.lua` 与 `modernz.conf` 历史冗余代码与素材 | 已完成 | 移除 7 套非 Screenbox 布局与旧版顶栏、95 个未使用的矢量图标（含全部 53 个 Material 图标）、毛玻璃 `GLASS_SHADER` 与模糊管线、`yt-dlp` 下载功能、图片浏览器模式、圣诞帽彩蛋以及移除菜单动画后的死代码，并同步精简 `modernz.conf` 中 23 项废弃配置；`modernz.lua` 从 7,797 行（478.9 KB）精简至 5,251 行（264.7 KB），减重 44.7%。 |
 | `PRG-12` | 2026-11-23 | 去除右上角关闭按钮上与窗口圆角不一致的黑色圆角遮罩（`ISS-10`） | 已完成 | 将 `modernz.lua` 与 `modernz.conf` 中 `window_rounded_corners` 默认关闭（由 Windows 11 DWM 原生圆角自然裁切关闭键），并在 `render_window_corners` 中于关闭按钮可见时跳过右上角黑色圆角遮罩。 |
 | `PRG-13` | 2026-11-23 | 修复动态边距缺陷并改为默认静态左上角 OSD 边距（`ISS-11`） | 已完成 | 修复 `sub_margins` 异步回显竞态与 `osd_margins` 淡入时序后，按保守策略将默认配置调整为 `sub_margins=no`、`osd_margins=no` 并新增 `osd_margin_y=60`（字幕不避让底栏，左上角音量百分比永久固定于顶栏下方）。 |
+| `PRG-14` | 2026-11-26 | 修复上下曲按钮初始失效与播完自动连播问题（`ISS-12`） | 已完成 | 在 `modernz.lua` 与 `modernz.conf` 中新增 `autoload_playlist=yes`、`step_playlist` 目录切歌兜底及 `pause_on_eof=yes`（`keep-open=always`），使上一个/下一个按钮始终可用，且媒体播完后统一暂停等待手动重播或切歌（自动连播留待 v2.0 与随机/循环按钮一并实现）。 |
 
 ---
 
@@ -102,8 +104,8 @@
 ## English Text
 
 - Document Version: 1.0
-- Last Updated: 2026-11-23
-- Current Status: v1.0 core development and polish completed; undergoing multi-day stability testing prior to final v1.0 sign-off
+- Last Updated: 2026-11-26
+- Current Status: v1.0 released; maintaining and fixing post-release feedback issues (see `ISS-12` / `PRG-14`)
 
 ---
 
@@ -162,6 +164,7 @@
 | `ISS-09` | `REQ-OTH-03` | P1 | Top and bottom bar translucent gradient masks show visible horizontal color-step banding over bright or uniform video scenes (such as a blue sky). | Fixed | The previous `add_gradient_mask` stacked 24 discrete `\blur0` horizontal strips (3–5px tall each with sharp alpha steps), causing visible banding; refactored to a single off-screen-padded ASS Gaussian-blurred box (`\blur` + `\bord0`, top: `edge_depth=24, blur=60, opacity=0.72`; bottom: `edge_depth=52, blur=72, opacity=0.63`) evaluated per-pixel by libass at native output resolution, eliminating banding while cutting mask elements from 48 to 2. |
 | `ISS-10` | `REQ-OTH-01` | P1 | Hovering over the top-right close button reveals a black rounded cutout on its top-right corner whose curvature does not match the native Windows 11 rounded window corner. | Fixed | The close button itself already had sharp corners (`hover_radius = 0`); the black arc came from `render_window_corners` drawing a software ASS corner mask over all elements (`window_corner_radius=10` scales with `playres` and diverges from DWM's fixed-pixel radius). Disabled `window_rounded_corners` by default in `modernz.lua` and `modernz.conf` (letting Windows 11 DWM clip natively), and skipped the top-right cutout in `render_window_corners` whenever the close button is visible. |
 | `ISS-11` | `REQ-OTH-01` / `REQ-BOT-03` | P1 | With `sub_margins=yes` and `osd_margins=yes`, subtitles occasionally remain elevated above the bottom bar after it fades out, and the top-left volume percentage OSD occasionally fails to shift below the top bar. | Resolved | 1) Fixed the `sub-pos` async echo race (`pending_subpos_writes` queue + moving restore outside the `sid` guard) and `osd_margins` fade-in timing / `osd_units_y` calculation in `modernz.lua`; 2) For maximum stability, disabled dynamic avoidance by default in `modernz.lua` and `modernz.conf` (`sub_margins=no`, `osd_margins=no`) so subtitles stay untouched, and added a static `osd_margin_y=60` option to keep top-left Volume% OSD permanently positioned below the top bar with zero dynamic jumping. |
+| `ISS-12` | `REQ-BOT-01` / `REQ-TOP-02` | P1 | Before switching media via the playlist menu, the bottom-bar Previous / Next buttons do nothing (and playback pauses at EOF with the circular replay icon); after switching via the playlist menu, Previous / Next work, but playback automatically jumps to the next media at EOF instead of pausing. | Fixed | 1) Root cause: Opening a single file leaves mpv's internal `playlist` with only 1 entry because Folder Playlist lazily called `play_folder` only when clicking a menu item, leaving `playlist-prev`/`playlist-next` with nowhere to go; meanwhile `keep-open=yes` pauses only on the final playlist entry and auto-advances once `play_folder` populates multiple entries. 2) Fix: Added `autoload_playlist=yes` (auto-populating same-folder sibling media into `playlist` in natural sort order on single-file load) plus `step_playlist` folder fallback for `playlist-prev`/`playlist-next`; added `pause_on_eof=yes` (setting `keep-open=always` and `keep-open-pause=yes`) so playback always pauses at EOF with the replay button, while automatically unpausing when switching tracks via Previous/Next, playlist menu, or shortcuts (auto-advance deferred to v2.0 alongside `REQ-BOT-04` shuffle/repeat controls). |
 
 ---
 
@@ -182,3 +185,4 @@
 | `PRG-11` | 2026-11-23 | Prune Legacy Redundant Code, Assets & Configs | Completed | Removed 7 non-Screenbox layouts and legacy window controls, 95 unused vector icons (including all 53 Material icons), frosted-glass `GLASS_SHADER` and blur pipeline, `yt-dlp` download feature, image viewer mode, Santa hat easter egg, and post-PRG-07 menu animation dead code; pruned 23 obsolete options from `modernz.conf`. Reduced `modernz.lua` from 7,797 lines (478.9 KB) to 5,251 lines (264.7 KB, -44.7%). |
 | `PRG-12` | 2026-11-23 | Remove Mismatched Black Corner Cutout Over Top-Right Close Button (`ISS-10`) | Completed | Disabled `window_rounded_corners` by default in `modernz.lua` and `modernz.conf` so native Windows 11 DWM rounded corners clip the close button cleanly, and skipped the top-right cutout in `render_window_corners` whenever top-bar window controls are visible. |
 | `PRG-13` | 2026-11-23 | Fix Dynamic Margin Bugs & Switch to Static Top-Left OSD Margin (`ISS-11`) | Completed | After fixing the `sub_margins` async race and `osd_margins` fade-in timing, switched defaults conservatively to `sub_margins=no`, `osd_margins=no`, and added static `osd_margin_y=60` so subtitles remain untouched and top-left Volume% stays permanently below the top bar. |
+| `PRG-14` | 2026-11-26 | Fix Previous/Next Initial Inactivity & EOF Auto-Advance Bug (`ISS-12`) | Completed | Added `autoload_playlist=yes`, `step_playlist` folder navigation fallback, and `pause_on_eof=yes` (`keep-open=always`) in `modernz.lua` and `modernz.conf`, keeping Previous/Next always functional and pausing at EOF for manual replay or track switching (auto-advance deferred to v2.0 alongside shuffle/repeat buttons). |
